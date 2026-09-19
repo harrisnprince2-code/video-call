@@ -4,22 +4,215 @@
   padding: 0;
 }
 
+html,
 body {
-  font-family: Arial, sans-serif;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
   background: #000;
   color: #fff;
-  min-height: 100vh;
-  overflow: hidden;
 }
+
+/* =========================
+   INCOMING CALL
+========================= */
+
+.incoming-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at center, #252525 0%, #090909 55%, #000 100%);
+}
+
+.incoming-content {
+  text-align: center;
+  width: 90%;
+  max-width: 420px;
+}
+
+.caller-avatar,
+.connecting-avatar {
+  width: 115px;
+  height: 115px;
+  margin: 0 auto 25px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #333, #111);
+  border: 2px solid rgba(255,255,255,0.15);
+  box-shadow: 0 0 45px rgba(255,255,255,0.12);
+  font-size: 48px;
+}
+
+.incoming-content h1 {
+  font-size: 25px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.incoming-content h2 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+.incoming-content p {
+  color: #aaa;
+  font-size: 16px;
+}
+
+.ring-animation {
+  width: 70px;
+  height: 70px;
+  margin: 35px auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.08);
+  font-size: 28px;
+  animation: ringPulse 1.3s infinite;
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255,255,255,0.25);
+  }
+
+  70% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 22px rgba(255,255,255,0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255,255,255,0);
+  }
+}
+
+.incoming-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 65px;
+  margin-top: 25px;
+}
+
+.incoming-buttons button {
+  border: none;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.incoming-buttons span {
+  font-size: 11px;
+}
+
+.decline-btn {
+  background: #e53935;
+}
+
+.accept-btn {
+  background: #24b45b;
+}
+
+.incoming-buttons button:hover {
+  transform: scale(1.06);
+}
+
+
+/* =========================
+   CONNECTING
+========================= */
+
+.connecting-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #050505;
+}
+
+.connecting-content {
+  text-align: center;
+}
+
+.connecting-avatar {
+  margin-bottom: 25px;
+}
+
+.connecting-content h1 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.connecting-content p {
+  color: #999;
+}
+
+.loading-dots {
+  margin-top: 25px;
+}
+
+.loading-dots span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 4px;
+  border-radius: 50%;
+  background: #fff;
+  animation: loading 1.2s infinite;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes loading {
+  0%, 80%, 100% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-6px);
+  }
+}
+
+
+/* =========================
+   MAIN CALL
+========================= */
 
 .call-screen {
   position: relative;
   width: 100%;
   height: 100vh;
   background: #111;
+  display: none;
 }
 
-/* Main video area */
 .remote-video {
   width: 100%;
   height: 100%;
@@ -58,14 +251,13 @@ body {
   color: #777;
 }
 
-/* Connection label */
 .remote-name {
   position: absolute;
   top: 25px;
   left: 25px;
   padding: 10px 15px;
   border-radius: 20px;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0,0,0,0.55);
   font-size: 14px;
 }
 
@@ -78,7 +270,11 @@ body {
   margin-right: 6px;
 }
 
-/* Your camera */
+
+/* =========================
+   YOUR CAMERA
+========================= */
+
 .local-video {
   position: absolute;
   right: 18px;
@@ -108,7 +304,11 @@ body {
   font-size: 12px;
 }
 
-/* Call information */
+
+/* =========================
+   CALL INFORMATION
+========================= */
+
 .call-info {
   position: absolute;
   top: 25px;
@@ -128,7 +328,11 @@ body {
   color: #ccc;
 }
 
-/* Controls */
+
+/* =========================
+   CONTROLS
+========================= */
+
 .controls {
   position: absolute;
   bottom: 35px;
@@ -159,12 +363,30 @@ body {
   background: #e53935;
 }
 
-.controls .end-call:hover {
-  background: #c62828;
-}
 
-/* Mobile */
+/* =========================
+   MOBILE
+========================= */
+
 @media (max-width: 600px) {
+
+  .incoming-content h1 {
+    font-size: 22px;
+  }
+
+  .incoming-content h2 {
+    font-size: 20px;
+  }
+
+  .caller-avatar,
+  .connecting-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .incoming-buttons {
+    gap: 55px;
+  }
 
   .local-video {
     width: 105px;
