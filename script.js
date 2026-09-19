@@ -17,9 +17,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 
-// ==========================================
+// ======================================================
 // FIREBASE
-// ==========================================
+// ======================================================
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUMYF3nuIKRYm84WzPm-6ZD13LKXnQ3X4",
@@ -32,14 +32,13 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 
-// ==========================================
-// ELEMENTS
-// ==========================================
+// ======================================================
+// HTML ELEMENTS
+// ======================================================
 
 const incomingScreen = document.getElementById("incomingScreen");
 const connectingScreen = document.getElementById("connectingScreen");
@@ -57,41 +56,65 @@ const speakerBtn = document.getElementById("speakerBtn");
 const endBtn = document.getElementById("endBtn");
 
 
-// ==========================================
-// WEBRTC
-// ==========================================
+// ======================================================
+// GLOBAL VARIABLES
+// ======================================================
 
 let peerConnection = null;
+
 let localStream = null;
+
 let remoteStream = null;
 
 let roomId = null;
-let isCaller = false;
-
-let unsubscribeRoom = null;
-let unsubscribeCandidates = null;
 
 let seconds = 0;
+
 let timerInterval = null;
 
 let micMuted = false;
+
 let cameraOff = false;
+
 let speakerOn = true;
 
 
-// Public STUN server
-const servers = {
+// ======================================================
+// WEBRTC SERVERS
+// ======================================================
+//
+// These are public STUN servers.
+// They help the two devices discover a direct
+// connection.
+//
+// TURN can be added later if a particular network
+// blocks direct WebRTC connections.
+//
+
+const rtcConfiguration = {
+
   iceServers: [
+
     {
       urls: "stun:stun.l.google.com:19302"
+    },
+
+    {
+      urls: "stun:stun1.l.google.com:19302"
+    },
+
+    {
+      urls: "stun:stun2.l.google.com:19302"
     }
+
   ]
+
 };
 
 
-// ==========================================
-// AUTHENTICATE
-// ==========================================
+// ======================================================
+// START FIREBASE
+// ======================================================
 
 async function startFirebase() {
 
@@ -99,13 +122,13 @@ async function startFirebase() {
 
     await signInAnonymously(auth);
 
-    console.log("Firebase authentication successful.");
+    console.log("Firebase anonymous authentication successful.");
 
-    checkCallLink();
+    checkRoom();
 
   } catch (error) {
 
-    console.error("Firebase authentication error:", error);
+    console.error("Firebase authentication failed:", error);
 
     alert(
       "Unable to connect to the call server. Please refresh the page."
@@ -116,45 +139,45 @@ async function startFirebase() {
 }
 
 
-// ==========================================
-// CHECK URL
-// ==========================================
+// ======================================================
+// CHECK URL FOR ROOM
+// ======================================================
 
-function checkCallLink() {
+function checkRoom() {
 
-  const params = new URLSearchParams(window.location.search);
+  const params =
+    new URLSearchParams(window.location.search);
 
   roomId = params.get("room");
 
+
   if (roomId) {
 
-    // Someone sent us a call link.
-    isCaller = false;
+    console.log("Incoming call room:", roomId);
 
     showIncomingCall();
 
   } else {
 
-    // No room yet.
-    isCaller = true;
+    console.log("No room. Showing caller screen.");
 
-    showCallerStart();
+    showCallerScreen();
 
   }
 
 }
 
 
-// ==========================================
-// CALLER START SCREEN
-// ==========================================
+// ======================================================
+// CALLER SCREEN
+// ======================================================
 
-function showCallerStart() {
+function showCallerScreen() {
 
   incomingScreen.style.display = "flex";
 
   incomingScreen.innerHTML = `
-  
+
     <div class="incoming-content">
 
       <div class="caller-avatar">
@@ -175,7 +198,7 @@ function showCallerStart() {
           border:0;
           border-radius:30px;
           background:#ffffff;
-          color:#000;
+          color:#000000;
           font-size:16px;
           font-weight:600;
           cursor:pointer;
@@ -188,106 +211,234 @@ function showCallerStart() {
 
   `;
 
+
   document
     .getElementById("createCallBtn")
-    .addEventListener("click", createCall);
+    .addEventListener(
+      "click",
+      createCall
+    );
 
 }
 
 
-// ==========================================
+// ======================================================
 // CREATE CALL
-// ==========================================
+// ======================================================
 
 async function createCall() {
 
   try {
 
-    connectingScreen.style.display = "flex";
+    console.log("Creating call...");
+
     incomingScreen.style.display = "none";
 
-    await startLocalCamera();
+    connectingScreen.style.display = "flex";
 
-    peerConnection = createPeerConnection();
+    connectingScreen.innerHTML = `
 
-    const callDoc = doc(collection(db, "calls"));
+      <div class="connecting-content">
 
-    roomId = callDoc.id;
+        <div class="connecting-avatar">
+          📞
+        </div>
 
-    const offerCandidates = collection(
-      callDoc,
-      "offerCandidates"
-    );
+        <h1>Starting Call...</h1>
 
-    const answerCandidates = collection(
-      callDoc,
-      "answerCandidates"
-    );
+        <p>Please allow camera and microphone access.</p>
 
+        <div class="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
 
-    peerConnection.onicecandidate = async event => {
+      </div>
 
-      if (event.candidate) {
-
-        await addDoc(
-          offerCandidates,
-          event.candidate.toJSON()
-        );
-
-      }
-
-    };
+    `;
 
 
-    const offerDescription =
-      await peerConnection.createOffer();
+    await startLocalMedia();
+
+
+    // Create Firestore call document
+    const callRef =
+      doc(collection(db, "calls"));
+
+    roomId = callRef.id;
+
+
+    console.log("Room created:", roomId);
+
+
+    // Create WebRTC connection
+    peerConnection =
+      createPeerConnection();
+
+
+    // Candidate collection for caller
+    const offerCandidates =
+      collection(
+        callRef,
+        "offerCandidates"
+      );
+
+
+    // Candidate collection for receiver
+    const answerCandidates =
+      collection(
+        callRef,
+        "answerCandidates"
+      );
+
+
+    // --------------------------------------------------
+    // SEND CALLER ICE CANDIDATES
+    // --------------------------------------------------
+
+    peerConnection.onicecandidate =
+      async event => {
+
+        if (!event.candidate) {
+
+          console.log(
+            "Caller ICE gathering complete."
+          );
+
+          return;
+
+        }
+
+
+        try {
+
+          await addDoc(
+            offerCandidates,
+            event.candidate.toJSON()
+          );
+
+          console.log(
+            "Caller ICE candidate saved."
+          );
+
+        } catch (error) {
+
+          console.error(
+            "Error saving caller ICE candidate:",
+            error
+          );
+
+        }
+
+      };
+
+
+    // --------------------------------------------------
+    // CREATE OFFER
+    // --------------------------------------------------
+
+    const offer =
+      await peerConnection.createOffer({
+
+        offerToReceiveAudio: true,
+
+        offerToReceiveVideo: true
+
+      });
+
 
     await peerConnection.setLocalDescription(
-      offerDescription
+      offer
     );
 
 
-    await setDoc(callDoc, {
-
-      offer: {
-        type: offerDescription.type,
-        sdp: offerDescription.sdp
-      },
-
-      createdAt: Date.now()
-
-    });
+    console.log(
+      "Caller local description created."
+    );
 
 
-    showWaitingForAnswer();
+    // --------------------------------------------------
+    // SAVE OFFER TO FIRESTORE
+    // --------------------------------------------------
+
+    await setDoc(
+      callRef,
+      {
+
+        offer: {
+
+          type: offer.type,
+
+          sdp: offer.sdp
+
+        },
+
+        status: "waiting",
+
+        createdAt: Date.now()
+
+      }
+    );
 
 
-    unsubscribeRoom = onSnapshot(
-      callDoc,
+    console.log(
+      "Offer saved to Firestore."
+    );
+
+
+    // --------------------------------------------------
+    // SHOW SHARE SCREEN
+    // --------------------------------------------------
+
+    showWaitingScreen();
+
+
+    // --------------------------------------------------
+    // LISTEN FOR ANSWER
+    // --------------------------------------------------
+
+    onSnapshot(
+      callRef,
       async snapshot => {
 
-        const data = snapshot.data();
+        const data =
+          snapshot.data();
 
-        if (!peerConnection) return;
+
+        if (!data) return;
+
+
+        console.log(
+          "Call document updated:",
+          data.status
+        );
+
 
         if (
-          data &&
           data.answer &&
           !peerConnection.currentRemoteDescription
         ) {
 
-          const answerDescription =
-            new RTCSessionDescription(data.answer);
-
-          await peerConnection.setRemoteDescription(
-            answerDescription
+          console.log(
+            "Answer received!"
           );
 
-          connectingScreen.style.display = "none";
 
-          callScreen.style.display = "block";
+          const answer =
+            new RTCSessionDescription(
+              data.answer
+            );
 
-          startTimer();
+
+          await peerConnection.setRemoteDescription(
+            answer
+          );
+
+
+          console.log(
+            "Remote answer applied."
+          );
 
         }
 
@@ -295,24 +446,52 @@ async function createCall() {
     );
 
 
+    // --------------------------------------------------
+    // LISTEN FOR ANSWER ICE CANDIDATES
+    // --------------------------------------------------
+
     onSnapshot(
       answerCandidates,
       snapshot => {
 
-        snapshot.docChanges().forEach(change => {
+        snapshot.docChanges().forEach(
+          async change => {
 
-          if (change.type === "added") {
+            if (
+              change.type !== "added"
+            ) {
+
+              return;
+
+            }
+
 
             const candidate =
-              new RTCIceCandidate(change.doc.data());
+              change.doc.data();
 
-            peerConnection
-              .addIceCandidate(candidate)
-              .catch(console.error);
+
+            console.log(
+              "Received receiver ICE candidate."
+            );
+
+
+            try {
+
+              await peerConnection.addIceCandidate(
+                new RTCIceCandidate(candidate)
+              );
+
+            } catch (error) {
+
+              console.error(
+                "Could not add receiver ICE candidate:",
+                error
+              );
+
+            }
 
           }
-
-        });
+        );
 
       }
     );
@@ -320,14 +499,19 @@ async function createCall() {
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "CALL CREATION ERROR:",
+      error
+    );
+
 
     connectingScreen.style.display = "none";
 
     incomingScreen.style.display = "flex";
 
+
     alert(
-      "Could not create the video call. Please try again."
+      "Could not create the call. Check your camera, microphone and Firebase connection."
     );
 
   }
@@ -335,13 +519,18 @@ async function createCall() {
 }
 
 
-// ==========================================
-// WAITING FOR SISTER
-// ==========================================
+// ======================================================
+// WAITING SCREEN
+// ======================================================
 
-function showWaitingForAnswer() {
+function showWaitingScreen() {
 
   connectingScreen.style.display = "flex";
+
+
+  const link =
+    `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+
 
   connectingScreen.innerHTML = `
 
@@ -353,7 +542,9 @@ function showWaitingForAnswer() {
 
       <h1>Waiting...</h1>
 
-      <p>Your sister can join using this link.</p>
+      <p>
+        Send this link to the person you want to call.
+      </p>
 
       <div
         style="
@@ -366,18 +557,18 @@ function showWaitingForAnswer() {
           color:#aaa;
         "
       >
-        ${window.location.origin}${window.location.pathname}?room=${roomId}
+        ${link}
       </div>
 
       <button
-        id="shareBtn"
+        id="shareCallBtn"
         style="
           margin-top:20px;
           padding:14px 25px;
           border:0;
           border-radius:30px;
-          background:#fff;
-          color:#000;
+          background:#ffffff;
+          color:#000000;
           font-weight:600;
           cursor:pointer;
         "
@@ -391,39 +582,59 @@ function showWaitingForAnswer() {
 
 
   document
-    .getElementById("shareBtn")
-    .addEventListener("click", async () => {
+    .getElementById("shareCallBtn")
+    .addEventListener(
+      "click",
+      async () => {
 
-      const link =
-        `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+        try {
 
-      try {
+          if (navigator.share) {
 
-        await navigator.clipboard.writeText(link);
+            await navigator.share({
 
-        alert("Call link copied!");
+              title: "Video Call",
 
-      } catch {
+              text: "Join my video call",
 
-        prompt(
-          "Copy this call link:",
-          link
-        );
+              url: link
+
+            });
+
+          } else {
+
+            await navigator.clipboard.writeText(
+              link
+            );
+
+            alert(
+              "Call link copied!"
+            );
+
+          }
+
+        } catch (error) {
+
+          console.log(
+            "Share cancelled."
+          );
+
+        }
 
       }
-
-    });
+    );
 
 }
 
 
-// ==========================================
-// INCOMING CALL
-// ==========================================
+// ======================================================
+// INCOMING CALL SCREEN
+// ======================================================
 
 function showIncomingCall() {
 
   incomingScreen.style.display = "flex";
+
 
   incomingScreen.innerHTML = `
 
@@ -446,19 +657,30 @@ function showIncomingCall() {
       <div class="incoming-buttons">
 
         <button
-          id="newDeclineBtn"
+          id="declineIncomingBtn"
           class="decline-btn"
         >
+
           ✕
-          <span>Decline</span>
+
+          <span>
+            Decline
+          </span>
+
         </button>
 
+
         <button
-          id="newAcceptBtn"
+          id="acceptIncomingBtn"
           class="accept-btn"
         >
+
           ✓
-          <span>Accept</span>
+
+          <span>
+            Accept
+          </span>
+
         </button>
 
       </div>
@@ -469,7 +691,7 @@ function showIncomingCall() {
 
 
   document
-    .getElementById("newAcceptBtn")
+    .getElementById("acceptIncomingBtn")
     .addEventListener(
       "click",
       answerCall
@@ -477,7 +699,7 @@ function showIncomingCall() {
 
 
   document
-    .getElementById("newDeclineBtn")
+    .getElementById("declineIncomingBtn")
     .addEventListener(
       "click",
       declineCall
@@ -486,32 +708,77 @@ function showIncomingCall() {
 }
 
 
-// ==========================================
+// ======================================================
 // ANSWER CALL
-// ==========================================
+// ======================================================
 
 async function answerCall() {
 
   try {
 
+    console.log(
+      "Answering room:",
+      roomId
+    );
+
+
     incomingScreen.style.display = "none";
 
     connectingScreen.style.display = "flex";
 
-    await startLocalCamera();
+
+    connectingScreen.innerHTML = `
+
+      <div class="connecting-content">
+
+        <div class="connecting-avatar">
+          📹
+        </div>
+
+        <h1>Connecting...</h1>
+
+        <p>
+          Connecting your camera and microphone.
+        </p>
+
+        <div class="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+      </div>
+
+    `;
 
 
-    const callDoc =
-      doc(db, "calls", roomId);
+    // --------------------------------------------------
+    // GET CAMERA + MICROPHONE
+    // --------------------------------------------------
+
+    await startLocalMedia();
+
+
+    // --------------------------------------------------
+    // GET CALL DOCUMENT
+    // --------------------------------------------------
+
+    const callRef =
+      doc(
+        db,
+        "calls",
+        roomId
+      );
+
 
     const callSnapshot =
-      await getDoc(callDoc);
+      await getDoc(callRef);
 
 
     if (!callSnapshot.exists()) {
 
       throw new Error(
-        "Call room does not exist."
+        "This call room does not exist."
       );
 
     }
@@ -521,32 +788,75 @@ async function answerCall() {
       callSnapshot.data();
 
 
+    if (!callData.offer) {
+
+      throw new Error(
+        "The caller offer is missing."
+      );
+
+    }
+
+
+    // --------------------------------------------------
+    // CREATE PEER CONNECTION
+    // --------------------------------------------------
+
     peerConnection =
       createPeerConnection();
 
 
+    // --------------------------------------------------
+    // FIRESTORE CANDIDATES
+    // --------------------------------------------------
+
     const offerCandidates =
       collection(
-        callDoc,
+        callRef,
         "offerCandidates"
       );
 
 
     const answerCandidates =
       collection(
-        callDoc,
+        callRef,
         "answerCandidates"
       );
 
 
+    // --------------------------------------------------
+    // SEND RECEIVER ICE CANDIDATES
+    // --------------------------------------------------
+
     peerConnection.onicecandidate =
       async event => {
 
-        if (event.candidate) {
+        if (!event.candidate) {
+
+          console.log(
+            "Receiver ICE gathering complete."
+          );
+
+          return;
+
+        }
+
+
+        try {
 
           await addDoc(
             answerCandidates,
             event.candidate.toJSON()
+          );
+
+          console.log(
+            "Receiver ICE candidate saved."
+          );
+
+        } catch (error) {
+
+          console.error(
+            "Error saving receiver candidate:",
+            error
           );
 
         }
@@ -554,75 +864,152 @@ async function answerCall() {
       };
 
 
+    // --------------------------------------------------
+    // APPLY CALLER OFFER
+    // --------------------------------------------------
+
     await peerConnection.setRemoteDescription(
+
       new RTCSessionDescription(
         callData.offer
       )
+
     );
 
 
-    const answerDescription =
-      await peerConnection.createAnswer();
+    console.log(
+      "Caller offer applied."
+    );
+
+
+    // --------------------------------------------------
+    // CREATE ANSWER
+    // --------------------------------------------------
+
+    const answer =
+      await peerConnection.createAnswer({
+
+        offerToReceiveAudio: true,
+
+        offerToReceiveVideo: true
+
+      });
 
 
     await peerConnection.setLocalDescription(
-      answerDescription
+      answer
     );
 
 
+    console.log(
+      "Receiver answer created."
+    );
+
+
+    // --------------------------------------------------
+    // SAVE ANSWER
+    // --------------------------------------------------
+
     await updateDoc(
-      callDoc,
+      callRef,
       {
+
         answer: {
-          type: answerDescription.type,
-          sdp: answerDescription.sdp
-        }
+
+          type: answer.type,
+
+          sdp: answer.sdp
+
+        },
+
+        status: "answered"
+
       }
     );
 
+
+    console.log(
+      "Answer saved to Firestore."
+    );
+
+
+    // --------------------------------------------------
+    // LISTEN FOR CALLER ICE
+    // --------------------------------------------------
 
     onSnapshot(
       offerCandidates,
       snapshot => {
 
-        snapshot.docChanges().forEach(change => {
+        snapshot.docChanges().forEach(
+          async change => {
 
-          if (change.type === "added") {
+            if (
+              change.type !== "added"
+            ) {
+
+              return;
+
+            }
+
 
             const candidate =
-              new RTCIceCandidate(
-                change.doc.data()
+              change.doc.data();
+
+
+            console.log(
+              "Received caller ICE candidate."
+            );
+
+
+            try {
+
+              await peerConnection.addIceCandidate(
+                new RTCIceCandidate(candidate)
               );
 
-            peerConnection
-              .addIceCandidate(candidate)
-              .catch(console.error);
+            } catch (error) {
+
+              console.error(
+                "Could not add caller ICE candidate:",
+                error
+              );
+
+            }
 
           }
-
-        });
+        );
 
       }
     );
 
 
-    connectingScreen.style.display = "none";
-
-    callScreen.style.display = "block";
-
-    startTimer();
-
-
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "ANSWER CALL ERROR:",
+      error
+    );
+
+
+    if (localStream) {
+
+      localStream
+        .getTracks()
+        .forEach(track => {
+          track.stop();
+        });
+
+    }
+
 
     connectingScreen.style.display = "none";
 
     incomingScreen.style.display = "flex";
 
+
     alert(
-      "Unable to answer this call."
+      "Unable to answer this call. Please try again."
     );
 
   }
@@ -630,15 +1017,21 @@ async function answerCall() {
 }
 
 
-// ==========================================
-// CREATE PEER CONNECTION
-// ==========================================
+// ======================================================
+// CREATE WEBRTC PEER CONNECTION
+// ======================================================
 
 function createPeerConnection() {
 
   const pc =
-    new RTCPeerConnection(servers);
+    new RTCPeerConnection(
+      rtcConfiguration
+    );
 
+
+  // ----------------------------------------------------
+  // REMOTE STREAM
+  // ----------------------------------------------------
 
   remoteStream =
     new MediaStream();
@@ -646,54 +1039,106 @@ function createPeerConnection() {
 
   pc.ontrack = event => {
 
+    console.log(
+      "Remote track received."
+    );
+
+
     event.streams[0]
       .getTracks()
       .forEach(track => {
 
-        remoteStream.addTrack(track);
+        remoteStream.addTrack(
+          track
+        );
 
       });
 
 
-    let remoteVideo =
-      document.getElementById("remoteVideo");
+    showRemoteVideo();
+
+  };
 
 
-    if (!remoteVideo) {
+  // ----------------------------------------------------
+  // CONNECTION STATE
+  // ----------------------------------------------------
 
-      remoteVideo =
-        document.createElement("video");
+  pc.onconnectionstatechange = () => {
 
-      remoteVideo.id = "remoteVideo";
+    console.log(
+      "Connection state:",
+      pc.connectionState
+    );
 
-      remoteVideo.autoplay = true;
 
-      remoteVideo.playsInline = true;
+    if (
+      pc.connectionState === "connected"
+    ) {
 
-      remoteVideo.style.position = "absolute";
+      console.log(
+        "VIDEO CALL CONNECTED!"
+      );
 
-      remoteVideo.style.inset = "0";
 
-      remoteVideo.style.width = "100%";
+      connectingScreen.style.display =
+        "none";
 
-      remoteVideo.style.height = "100%";
+      callScreen.style.display =
+        "block";
 
-      remoteVideo.style.objectFit = "cover";
 
-      remoteVideo.style.zIndex = "1";
-
-      document
-        .querySelector(".remote-video")
-        .prepend(remoteVideo);
+      startTimer();
 
     }
 
 
-    remoteVideo.srcObject =
-      remoteStream;
+    if (
+      pc.connectionState === "failed"
+    ) {
+
+      console.error(
+        "WebRTC connection failed."
+      );
+
+
+      alert(
+        "The devices could not establish a direct video connection. We may need to add a TURN server."
+      );
+
+    }
+
+
+    if (
+      pc.connectionState === "disconnected"
+    ) {
+
+      console.log(
+        "WebRTC disconnected."
+      );
+
+    }
 
   };
 
+
+  // ----------------------------------------------------
+  // ICE CONNECTION STATE
+  // ----------------------------------------------------
+
+  pc.oniceconnectionstatechange = () => {
+
+    console.log(
+      "ICE state:",
+      pc.iceConnectionState
+    );
+
+  };
+
+
+  // ----------------------------------------------------
+  // ADD LOCAL TRACKS
+  // ----------------------------------------------------
 
   if (localStream) {
 
@@ -716,20 +1161,139 @@ function createPeerConnection() {
 }
 
 
-// ==========================================
-// CAMERA + MICROPHONE
-// ==========================================
+// ======================================================
+// SHOW REMOTE VIDEO
+// ======================================================
 
-async function startLocalCamera() {
+function showRemoteVideo() {
+
+  let remoteVideo =
+    document.getElementById(
+      "remoteVideo"
+    );
+
+
+  if (!remoteVideo) {
+
+    remoteVideo =
+      document.createElement(
+        "video"
+      );
+
+
+    remoteVideo.id =
+      "remoteVideo";
+
+
+    remoteVideo.autoplay =
+      true;
+
+
+    remoteVideo.playsInline =
+      true;
+
+
+    remoteVideo.setAttribute(
+      "playsinline",
+      ""
+    );
+
+
+    remoteVideo.style.position =
+      "absolute";
+
+
+    remoteVideo.style.inset =
+      "0";
+
+
+    remoteVideo.style.width =
+      "100%";
+
+
+    remoteVideo.style.height =
+      "100%";
+
+
+    remoteVideo.style.objectFit =
+      "cover";
+
+
+    remoteVideo.style.zIndex =
+      "1";
+
+
+    const remoteContainer =
+      document.querySelector(
+        ".remote-video"
+      );
+
+
+    remoteContainer.prepend(
+      remoteVideo
+    );
+
+  }
+
+
+  remoteVideo.srcObject =
+    remoteStream;
+
+
+  remoteVideo.muted =
+    !speakerOn;
+
+
+  remoteVideo.play()
+    .catch(error => {
+
+      console.log(
+        "Remote video play waiting for user interaction:",
+        error
+      );
+
+    });
+
+}
+
+
+// ======================================================
+// LOCAL CAMERA + MICROPHONE
+// ======================================================
+
+async function startLocalMedia() {
+
+  console.log(
+    "Requesting camera and microphone..."
+  );
+
 
   localStream =
     await navigator.mediaDevices.getUserMedia({
 
       video: {
+
+        width: {
+          ideal: 1280
+        },
+
+        height: {
+          ideal: 720
+        },
+
         facingMode: "user"
+
       },
 
-      audio: true
+      audio: {
+
+        echoCancellation: true,
+
+        noiseSuppression: true,
+
+        autoGainControl: true
+
+      }
 
     });
 
@@ -737,20 +1301,29 @@ async function startLocalCamera() {
   localCamera.srcObject =
     localStream;
 
+
+  console.log(
+    "Camera and microphone ready."
+  );
+
 }
 
 
-// ==========================================
+// ======================================================
 // TIMER
-// ==========================================
+// ======================================================
 
 function startTimer() {
 
-  clearInterval(timerInterval);
+  clearInterval(
+    timerInterval
+  );
+
 
   seconds = 0;
 
-  timer.textContent = "00:00";
+  timer.textContent =
+    "00:00";
 
 
   timerInterval =
@@ -758,26 +1331,39 @@ function startTimer() {
 
       seconds++;
 
+
       const minutes =
-        Math.floor(seconds / 60);
+        Math.floor(
+          seconds / 60
+        );
+
 
       const secs =
         seconds % 60;
 
 
       timer.textContent =
-        String(minutes).padStart(2, "0") +
-        ":" +
-        String(secs).padStart(2, "0");
+        String(minutes).padStart(
+          2,
+          "0"
+        )
+        +
+        ":"
+        +
+        String(secs).padStart(
+          2,
+          "0"
+        );
+
 
     }, 1000);
 
 }
 
 
-// ==========================================
+// ======================================================
 // MUTE
-// ==========================================
+// ======================================================
 
 muteBtn.addEventListener(
   "click",
@@ -785,29 +1371,37 @@ muteBtn.addEventListener(
 
     if (!localStream) return;
 
-    const tracks =
+
+    const audioTracks =
       localStream.getAudioTracks();
 
-    tracks.forEach(track => {
 
-      track.enabled =
-        !track.enabled;
+    audioTracks.forEach(
+      track => {
 
-    });
+        track.enabled =
+          !track.enabled;
+
+      }
+    );
 
 
-    micMuted = !micMuted;
+    micMuted =
+      !micMuted;
+
 
     muteBtn.textContent =
-      micMuted ? "🔇" : "🎙️";
+      micMuted
+        ? "🔇"
+        : "🎙️";
 
   }
 );
 
 
-// ==========================================
+// ======================================================
 // CAMERA
-// ==========================================
+// ======================================================
 
 cameraBtn.addEventListener(
   "click",
@@ -815,29 +1409,37 @@ cameraBtn.addEventListener(
 
     if (!localStream) return;
 
-    const tracks =
+
+    const videoTracks =
       localStream.getVideoTracks();
 
-    tracks.forEach(track => {
 
-      track.enabled =
-        !track.enabled;
+    videoTracks.forEach(
+      track => {
 
-    });
+        track.enabled =
+          !track.enabled;
+
+      }
+    );
 
 
-    cameraOff = !cameraOff;
+    cameraOff =
+      !cameraOff;
+
 
     cameraBtn.textContent =
-      cameraOff ? "📷" : "🎥";
+      cameraOff
+        ? "📷"
+        : "🎥";
 
   }
 );
 
 
-// ==========================================
+// ======================================================
 // SPEAKER
-// ==========================================
+// ======================================================
 
 speakerBtn.addEventListener(
   "click",
@@ -846,12 +1448,18 @@ speakerBtn.addEventListener(
     speakerOn =
       !speakerOn;
 
+
     speakerBtn.textContent =
-      speakerOn ? "🔊" : "🔇";
+      speakerOn
+        ? "🔊"
+        : "🔇";
 
 
     const remoteVideo =
-      document.getElementById("remoteVideo");
+      document.getElementById(
+        "remoteVideo"
+      );
+
 
     if (remoteVideo) {
 
@@ -864,15 +1472,32 @@ speakerBtn.addEventListener(
 );
 
 
-// ==========================================
-// DECLINE
-// ==========================================
+// ======================================================
+// DECLINE CALL
+// ======================================================
 
 function declineCall() {
 
   if (peerConnection) {
 
     peerConnection.close();
+
+    peerConnection =
+      null;
+
+  }
+
+
+  if (localStream) {
+
+    localStream
+      .getTracks()
+      .forEach(track => {
+        track.stop();
+      });
+
+    localStream =
+      null;
 
   }
 
@@ -883,9 +1508,9 @@ function declineCall() {
 }
 
 
-// ==========================================
+// ======================================================
 // END CALL
-// ==========================================
+// ======================================================
 
 endBtn.addEventListener(
   "click",
@@ -901,6 +1526,9 @@ endBtn.addEventListener(
 
         });
 
+      localStream =
+        null;
+
     }
 
 
@@ -908,10 +1536,15 @@ endBtn.addEventListener(
 
       peerConnection.close();
 
+      peerConnection =
+        null;
+
     }
 
 
-    clearInterval(timerInterval);
+    clearInterval(
+      timerInterval
+    );
 
 
     window.location.href =
@@ -921,8 +1554,8 @@ endBtn.addEventListener(
 );
 
 
-// ==========================================
-// START
-// ==========================================
+// ======================================================
+// START APPLICATION
+// ======================================================
 
 startFirebase();
