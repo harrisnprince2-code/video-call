@@ -2,47 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+  >
+
   <title>Video Call</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <main class="call-screen">
+  <!-- Incoming Call Screen -->
+  <div id="incomingScreen" class="incoming-screen">
 
+    <div class="incoming-content">
+
+      <div class="caller-avatar">
+        👤
+      </div>
+
+      <h1>Incoming Video Call</h1>
+
+      <h2>Unknown Caller</h2>
+
+      <p>is calling you...</p>
+
+      <div class="ring-animation">
+        📹
+      </div>
+
+      <div class="incoming-buttons">
+
+        <button id="declineBtn" class="decline-btn">
+          ✕
+          <span>Decline</span>
+        </button>
+
+        <button id="acceptBtn" class="accept-btn">
+          ✓
+          <span>Accept</span>
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- Connecting Screen -->
+  <div id="connectingScreen" class="connecting-screen">
+
+    <div class="connecting-content">
+
+      <div class="connecting-avatar">
+        👤
+      </div>
+
+      <h1>Connecting...</h1>
+
+      <p>Please wait</p>
+
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- Main Call Screen -->
+  <main id="callScreen" class="call-screen">
+
+    <!-- Remote Video -->
     <div class="remote-video">
+
       <div class="remote-placeholder">
-        <div class="avatar">★</div>
+
+        <div class="avatar">
+          👤
+        </div>
+
         <h2>Waiting for connection...</h2>
-        <p>Video call</p>
+
+        <p>The other person will appear here</p>
+
       </div>
 
       <div class="remote-name">
         <span class="status-dot"></span>
         Connected
       </div>
+
     </div>
 
+
+    <!-- Your Camera -->
     <div class="local-video">
-      <video id="localCamera" autoplay muted playsinline></video>
-      <div class="you-label">You</div>
+
+      <video
+        id="localCamera"
+        autoplay
+        muted
+        playsinline
+      ></video>
+
+      <div class="you-label">
+        You
+      </div>
+
     </div>
 
+
+    <!-- Call Information -->
     <div class="call-info">
+
       <h1>Video Call</h1>
-      <div id="timer">00:00</div>
+
+      <div id="timer">
+        00:00
+      </div>
+
     </div>
 
+
+    <!-- Controls -->
     <div class="controls">
-      <button id="muteBtn">🎤</button>
-      <button id="cameraBtn">📹</button>
-      <button id="speakerBtn">🔊</button>
-      <button id="endBtn" class="end-call">📞</button>
+
+      <button id="muteBtn" title="Mute">
+        🎙️
+      </button>
+
+      <button id="cameraBtn" title="Camera">
+        🎥
+      </button>
+
+      <button id="speakerBtn" title="Speaker">
+        🔊
+      </button>
+
+      <button id="endBtn" class="end-call" title="End Call">
+        ☎
+      </button>
+
     </div>
 
   </main>
 
+
   <script src="script.js"></script>
+
 </body>
 </html>
