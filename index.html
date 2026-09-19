@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Call</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <main class="call-screen">
+
+    <div class="remote-video">
+      <div class="remote-placeholder">
+        <div class="avatar">★</div>
+        <h2>Waiting for connection...</h2>
+        <p>Video call</p>
+      </div>
+
+      <div class="remote-name">
+        <span class="status-dot"></span>
+        Connected
+      </div>
+    </div>
+
+    <div class="local-video">
+      <video id="localCamera" autoplay muted playsinline></video>
+      <div class="you-label">You</div>
+    </div>
+
+    <div class="call-info">
+      <h1>Video Call</h1>
+      <div id="timer">00:00</div>
+    </div>
+
+    <div class="controls">
+      <button id="muteBtn">🎤</button>
+      <button id="cameraBtn">📹</button>
+      <button id="speakerBtn">🔊</button>
+      <button id="endBtn" class="end-call">📞</button>
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
