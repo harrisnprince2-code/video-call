@@ -92,33 +92,32 @@ let speakerOn = true;
 //
 
 const rtcConfiguration = {
-  iceServers: [
-    {
-      urls: "stun:stun.relay.metered.ca:80"
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80",
-      username: "89c30c6a909f9999d5461524",
-      credential: "dD1yf750070M26AE"
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80?transport=tcp",
-      username: "89c30c6a909f9999d5461524",
-      credential: "dD1yf750070M26AE"
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: "89c30c6a909f9999d5461524",
-      credential:  "dD1yf750070M26AE"
-    },
-    {
-      urls: "turns:global.relay.metered.ca:443?transport=tcp",
-      username:  "89c30c6a909f9999d5461524",
-      credential:   "dD1yf750070M26AE"
-    }
-  ]
-};
-
+ iceServers: [
+      {
+        urls: "stun:stun.relay.metered.ca:80",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: "89c30c6a909f9999d5461524",
+        credential: "dD1yf75007OM26AE",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "89c30c6a909f9999d5461524",
+        credential: "dD1yf75007OM26AE",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:443",
+        username: "89c30c6a909f9999d5461524",
+        credential: "dD1yf75007OM26AE",
+      },
+      {
+        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "89c30c6a909f9999d5461524",
+        credential: "dD1yf75007OM26AE",
+      },
+  ],
+});
 
 // ======================================================
 // START FIREBASE
