@@ -1134,14 +1134,43 @@ function createPeerConnection() {
   // ICE CONNECTION STATE
   // ----------------------------------------------------
 
-  pc.oniceconnectionstatechange = () => {
+ pc.oniceconnectionstatechange = async () => {
+  console.log("ICE state:", pc.iceConnectionState);
 
-    console.log(
-      "ICE state:",
-      pc.iceConnectionState
-    );
+  try {
+    const stats = await pc.getStats();
 
-  };
+    stats.forEach((report) => {
+      if (report.type === "candidate-pair" && report.state === "succeeded") {
+        console.log("✅ Successful ICE candidate pair:", report);
+
+        if (report.localCandidateId) {
+          const localCandidate = stats.get(report.localCandidateId);
+
+          if (localCandidate) {
+            console.log(
+              "🌐 Local candidate type:",
+              localCandidate.candidateType
+            );
+          }
+        }
+
+        if (report.remoteCandidateId) {
+          const remoteCandidate = stats.get(report.remoteCandidateId);
+
+          if (remoteCandidate) {
+            console.log(
+              "🌐 Remote candidate type:",
+              remoteCandidate.candidateType
+            );
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Could not read WebRTC stats:", error);
+  }
+};
 
 
   // ----------------------------------------------------
